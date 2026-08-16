@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import PlayerManager from './components/PlayerManager.jsx'
 import Scoreboard from './components/Scoreboard.jsx'
 import WavelengthDial from './components/WavelengthDial.jsx'
@@ -13,14 +13,13 @@ import { computeRoles } from './rotation.js'
 const PHASES = {
   LOBBY: 'LOBBY',
   CLUE_SETUP: 'CLUE_SETUP',
-  PASS_DEVICE: 'PASS_DEVICE',
   GUESSING: 'GUESSING',
   BONUS: 'BONUS',
   REVEAL: 'REVEAL',
   SUMMARY: 'SUMMARY',
 }
 
-const ROUND_PHASES = [PHASES.CLUE_SETUP, PHASES.PASS_DEVICE, PHASES.GUESSING, PHASES.BONUS, PHASES.REVEAL]
+const ROUND_PHASES = [PHASES.CLUE_SETUP, PHASES.GUESSING, PHASES.BONUS, PHASES.REVEAL]
 
 export default function App() {
   const [phase, setPhase] = useState(PHASES.LOBBY)
@@ -35,15 +34,16 @@ export default function App() {
   const [justSaved, setJustSaved] = useState(false)
   const [theme, setTheme] = useState(() => document.documentElement.dataset.theme || 'dark')
 
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme
-    localStorage.setItem('wavelength-theme', theme)
-  }, [theme])
-
-  const toggleTheme = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))
+  const toggleTheme = () => {
+    const next = theme === 'dark' ? 'light' : 'dark'
+    document.documentElement.dataset.theme = next
+    localStorage.setItem('wavelength-theme', next)
+    setTheme(next)
+  }
 
   const [leftLabel, setLeftLabel] = useState('')
   const [rightLabel, setRightLabel] = useState('')
+  const [appliedTopic, setAppliedTopic] = useState(['', ''])
   const [target, setTarget] = useState(50)
   const [guess, setGuess] = useState(50)
   const [bonusChoices, setBonusChoices] = useState({})
@@ -73,8 +73,11 @@ export default function App() {
   const applyTopic = (l, r) => {
     setLeftLabel(l)
     setRightLabel(r)
+    setAppliedTopic([l, r])
     setTarget(randomTarget())
   }
+
+  const topicEdited = leftLabel !== appliedTopic[0] || rightLabel !== appliedTopic[1]
 
   const randomTopic = () => {
     const pool = [...customTopics, ...PRESETS]
@@ -106,6 +109,7 @@ export default function App() {
       const next = saveCustomTopic(ts, leftLabel, rightLabel)
       if (next !== ts) {
         setJustSaved(true)
+        setAppliedTopic([leftLabel, rightLabel])
         setTimeout(() => setJustSaved(false), 1500)
       }
       return next
@@ -114,10 +118,8 @@ export default function App() {
 
   const lockTarget = () => {
     setGuess(50)
-    setPhase(PHASES.PASS_DEVICE)
+    setPhase(PHASES.GUESSING)
   }
-
-  const startGuessing = () => setPhase(PHASES.GUESSING)
 
   const lockGuess = () => {
     setBonusChoices({})
@@ -349,9 +351,9 @@ export default function App() {
             </button>
             <button
               className="icon-button"
-              disabled={!leftLabel.trim() || !rightLabel.trim()}
+              disabled={!topicEdited || !leftLabel.trim() || !rightLabel.trim()}
               onClick={saveTopic}
-              title={justSaved ? 'Saved!' : 'Save this topic'}
+              title={justSaved ? 'Saved!' : topicEdited ? 'Save this topic' : 'Edit the topic to save it as new'}
               aria-label="Save this topic"
             >
               {justSaved ? '✓' : '💾'}
@@ -389,20 +391,7 @@ export default function App() {
           </div>
 
           <button className="primary" onClick={lockTarget}>
-            Lock target &amp; hide it
-          </button>
-        </div>
-      )}
-
-      {phase === PHASES.PASS_DEVICE && (
-        <div className="panel cover">
-          <h2>🙈 Pass the device</h2>
-          <p className="subtitle">
-            Hand the device to <strong>{guesser?.name}</strong>. {clueGiver?.name} should now give a verbal clue
-            that points at the secret target.
-          </p>
-          <button className="primary" onClick={startGuessing}>
-            We're ready — show the guessing scale
+            Lock target &amp; hide it — hand off to {guesser?.name}
           </button>
         </div>
       )}
@@ -410,7 +399,10 @@ export default function App() {
       {phase === PHASES.GUESSING && (
         <div className="panel">
           <h2>{guesser?.name}, make your guess</h2>
-          <p className="subtitle">Drag the marker to where you think the target is, then lock it in.</p>
+          <p className="subtitle">
+            {clueGiver?.name} should give a verbal clue now. {guesser?.name}, drag the marker to where you think
+            the target is, then lock it in.
+          </p>
           <WavelengthDial
             leftLabel={leftLabel}
             rightLabel={rightLabel}

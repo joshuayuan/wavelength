@@ -89,10 +89,6 @@ h2 {
   margin: 3rem auto;
 }
 
-.panel.cover {
-  text-align: center;
-}
-
 .primary {
   width: 100%;
   padding: 0.85rem;
@@ -303,8 +299,12 @@ input[type='text'] {
   fill: var(--accent);
 }
 
+.needle-active line {
+  stroke: var(--danger);
+}
+
 .needle-active circle {
-  fill: white;
+  fill: var(--danger);
 }
 
 .dial-hub {

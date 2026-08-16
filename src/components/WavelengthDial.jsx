@@ -95,10 +95,11 @@ export default function WavelengthDial({ leftLabel, rightLabel, zoneCenter = nul
         {allNeedles.map((n, i) => {
           const angle = valueToAngle(n.value)
           const tip = polar(CX, CY, R - 8, angle)
+          const radius = n.style === 'active' ? 7 : 11
           return (
             <g key={i} className={`needle needle-${n.style}`}>
               <line x1={CX} y1={CY} x2={tip.x} y2={tip.y} />
-              <circle cx={tip.x} cy={tip.y} r={11} />
+              <circle cx={tip.x} cy={tip.y} r={radius} />
             </g>
           )
         })}
