@@ -23,7 +23,7 @@ export function computeStats(history) {
     bump(
       combos,
       `${round.clueGiverId}|${round.guesserId}`,
-      `${round.clueGiverName} + ${round.guesserName}`,
+      `${round.clueGiverName} → ${round.guesserName}`,
       round.clueGiverPoints + round.guesserPoints,
     )
   }

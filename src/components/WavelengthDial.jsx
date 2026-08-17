@@ -1,15 +1,32 @@
 import { useCallback, useRef } from 'react'
 import { SCORE_BANDS } from '../scoring.js'
 
-const VB_W = 400
-const VB_H = 210
-const CX = 200
-const CY = 200
+// Extra margin around the dial so the tip arrows (which sit just outside the
+// rim) have room without clipping against the viewBox edges.
+const VB_W = 420
+const VB_H = 222
+const CX = 210
+const CY = 212
 const R = 188
 
 function polar(cx, cy, r, thetaDeg) {
   const rad = (thetaDeg * Math.PI) / 180
   return { x: cx + r * Math.cos(rad), y: cy - r * Math.sin(rad) }
+}
+
+// A small triangle just outside radius R, pointing back in at the rim.
+function arrowPoints(cx, cy, thetaDeg, tipRadius, length, width) {
+  const rad = (thetaDeg * Math.PI) / 180
+  const ux = Math.cos(rad)
+  const uy = -Math.sin(rad)
+  const px = -uy
+  const py = ux
+  const tip = { x: cx + ux * tipRadius, y: cy + uy * tipRadius }
+  const baseX = cx + ux * (tipRadius + length)
+  const baseY = cy + uy * (tipRadius + length)
+  const b1 = { x: baseX + px * (width / 2), y: baseY + py * (width / 2) }
+  const b2 = { x: baseX - px * (width / 2), y: baseY - py * (width / 2) }
+  return `${tip.x},${tip.y} ${b1.x},${b1.y} ${b2.x},${b2.y}`
 }
 
 // Filled pie slice between two angles (0=right, 180=left, sweeping over the top).
@@ -94,12 +111,11 @@ export default function WavelengthDial({ leftLabel, rightLabel, zoneCenter = nul
 
         {allNeedles.map((n, i) => {
           const angle = valueToAngle(n.value)
-          const tip = polar(CX, CY, R - 8, angle)
-          const radius = n.style === 'active' ? 7 : 11
+          const tip = polar(CX, CY, R, angle)
           return (
             <g key={i} className={`needle needle-${n.style}`}>
               <line x1={CX} y1={CY} x2={tip.x} y2={tip.y} />
-              <circle cx={tip.x} cy={tip.y} r={radius} />
+              <polygon points={arrowPoints(CX, CY, angle, R + 5, 12, 12)} />
             </g>
           )
         })}

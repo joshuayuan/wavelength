@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import PlayerManager from './components/PlayerManager.jsx'
 import Scoreboard from './components/Scoreboard.jsx'
 import WavelengthDial from './components/WavelengthDial.jsx'
 import Summary from './components/Summary.jsx'
-import ThemeToggle from './components/ThemeToggle.jsx'
+import Settings from './components/Settings.jsx'
 import { PRESETS } from './presets.js'
 import { scoreGuess } from './scoring.js'
 import { toTenScale } from './stats.js'
@@ -23,13 +23,33 @@ const ROUND_PHASES = [PHASES.CLUE_SETUP, PHASES.GUESSING, PHASES.BONUS, PHASES.R
 
 export default function App() {
   const [phase, setPhase] = useState(PHASES.LOBBY)
+  // The dial can sit at a different scroll offset on each phase (the panels
+  // above it vary in height). Rather than force it to any particular spot,
+  // just keep it visually frozen wherever it was on screen right before the
+  // switch, by nudging scroll to cancel out however much it moved.
+  const dialTopRef = useRef(null)
+  const goToPhase = (next) => {
+    const el = document.querySelector('.dial-wrap')
+    dialTopRef.current = el ? el.getBoundingClientRect().top : null
+    setPhase(next)
+  }
+  useLayoutEffect(() => {
+    const savedTop = dialTopRef.current
+    if (savedTop == null) return
+    const el = document.querySelector('.dial-wrap')
+    if (!el) return
+    const delta = el.getBoundingClientRect().top - savedTop
+    if (delta !== 0) window.scrollBy(0, delta)
+  }, [phase])
   const [players, setPlayers] = useState([])
   const [round, setRound] = useState(1)
   const [clueGiverId, setClueGiverId] = useState(null)
   const [guesserId, setGuesserId] = useState(null)
   const [managerOpen, setManagerOpen] = useState(false)
   const [topicsOpen, setTopicsOpen] = useState(false)
-  const [upcomingOpen, setUpcomingOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [bonusEnabled, setBonusEnabled] = useState(true)
+  const [clueGiverScoringEnabled, setClueGiverScoringEnabled] = useState(true)
   const [customTopics, setCustomTopics] = useState(() => loadCustomTopics())
   const [justSaved, setJustSaved] = useState(false)
   const [theme, setTheme] = useState(() => document.documentElement.dataset.theme || 'dark')
@@ -94,7 +114,7 @@ export default function App() {
     setGuesserId(gs)
     applyTopic(...randomTopic())
     setManagerOpen(false)
-    setPhase(PHASES.CLUE_SETUP)
+    goToPhase(PHASES.CLUE_SETUP)
   }
 
   const fillPreset = () => applyTopic(...randomTopic())
@@ -118,13 +138,13 @@ export default function App() {
 
   const lockTarget = () => {
     setGuess(50)
-    setPhase(PHASES.GUESSING)
+    goToPhase(PHASES.GUESSING)
   }
 
   const lockGuess = () => {
     setBonusChoices({})
-    if (others.length > 0) {
-      setPhase(PHASES.BONUS)
+    if (bonusEnabled && others.length > 0) {
+      goToPhase(PHASES.BONUS)
     } else {
       reveal()
     }
@@ -136,14 +156,16 @@ export default function App() {
 
   const reveal = () => {
     const guesserPoints = scoreGuess(target, guess)
-    const clueGiverPoints = guesserPoints > 0 ? 1 : 0
+    const clueGiverPoints = clueGiverScoringEnabled && guesserPoints > 0 ? 1 : 0
     const correctDirection = target > guess ? 'right' : target < guess ? 'left' : null
 
-    const bonusResults = others.map((p) => {
-      const choice = bonusChoices[p.id]
-      const earned = correctDirection && choice === correctDirection ? 1 : 0
-      return { playerId: p.id, playerName: p.name, choice, earned }
-    })
+    const bonusResults = bonusEnabled
+      ? others.map((p) => {
+          const choice = bonusChoices[p.id]
+          const earned = correctDirection && choice === correctDirection ? 1 : 0
+          return { playerId: p.id, playerName: p.name, choice, earned }
+        })
+      : []
 
     setPlayers((ps) =>
       ps.map((p) => {
@@ -172,7 +194,7 @@ export default function App() {
     }
     setLastResult(result)
     setHistory((h) => [result, ...h])
-    setPhase(PHASES.REVEAL)
+    goToPhase(PHASES.REVEAL)
   }
 
   const nextRound = () => {
@@ -184,10 +206,10 @@ export default function App() {
     applyTopic(...randomTopic())
     setGuess(50)
     setBonusChoices({})
-    setPhase(PHASES.CLUE_SETUP)
+    goToPhase(PHASES.CLUE_SETUP)
   }
 
-  const endGame = () => setPhase(PHASES.SUMMARY)
+  const endGame = () => goToPhase(PHASES.SUMMARY)
 
   const newGameSamePlayers = () => {
     setPlayers((ps) => ps.map((p) => ({ ...p, score: 0 })))
@@ -197,7 +219,7 @@ export default function App() {
     setGuesserId(null)
     setLastResult(null)
     setManagerOpen(true)
-    setPhase(PHASES.LOBBY)
+    goToPhase(PHASES.LOBBY)
   }
 
   if (phase === PHASES.LOBBY) {
@@ -206,9 +228,21 @@ export default function App() {
         <header className="app-header">
           <h1>Wavelength</h1>
           <div className="header-actions">
-            <ThemeToggle theme={theme} onToggle={toggleTheme} />
+            <button className="link-button" onClick={() => setSettingsOpen((o) => !o)}>
+              ⚙️ Settings
+            </button>
           </div>
         </header>
+        {settingsOpen && (
+          <Settings
+            bonusEnabled={bonusEnabled}
+            onBonusEnabledChange={setBonusEnabled}
+            clueGiverScoringEnabled={clueGiverScoringEnabled}
+            onClueGiverScoringEnabledChange={setClueGiverScoringEnabled}
+            theme={theme}
+            onToggleTheme={toggleTheme}
+          />
+        )}
         <div className="panel setup">
           <p className="subtitle">Add your players, then start the first round.</p>
           <PlayerManager players={players} onAdd={addPlayer} onRemove={removePlayer} disableRemove={disableRemove} />
@@ -226,9 +260,21 @@ export default function App() {
         <header className="app-header">
           <h1>Wavelength</h1>
           <div className="header-actions">
-            <ThemeToggle theme={theme} onToggle={toggleTheme} />
+            <button className="link-button" onClick={() => setSettingsOpen((o) => !o)}>
+              ⚙️ Settings
+            </button>
           </div>
         </header>
+        {settingsOpen && (
+          <Settings
+            bonusEnabled={bonusEnabled}
+            onBonusEnabledChange={setBonusEnabled}
+            clueGiverScoringEnabled={clueGiverScoringEnabled}
+            onClueGiverScoringEnabledChange={setClueGiverScoringEnabled}
+            theme={theme}
+            onToggleTheme={toggleTheme}
+          />
+        )}
         <Summary players={players} history={history} onNewGame={newGameSamePlayers} />
       </div>
     )
@@ -245,15 +291,25 @@ export default function App() {
           <button className="link-button" onClick={() => setTopicsOpen((o) => !o)}>
             📝 Topics{customTopics.length > 0 ? ` (${customTopics.length})` : ''}
           </button>
-          <button className="link-button" onClick={() => setUpcomingOpen((o) => !o)}>
-            🔮 Upcoming
+          <button className="link-button" onClick={() => setSettingsOpen((o) => !o)}>
+            ⚙️ Settings
           </button>
           <button className="link-button" onClick={endGame}>
             End game
           </button>
-          <ThemeToggle theme={theme} onToggle={toggleTheme} />
         </div>
       </header>
+
+      {settingsOpen && (
+        <Settings
+          bonusEnabled={bonusEnabled}
+          onBonusEnabledChange={setBonusEnabled}
+          clueGiverScoringEnabled={clueGiverScoringEnabled}
+          onClueGiverScoringEnabledChange={setClueGiverScoringEnabled}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+        />
+      )}
 
       {managerOpen && (
         <div className="panel">
@@ -294,29 +350,6 @@ export default function App() {
         </div>
       )}
 
-      {upcomingOpen && (
-        <div className="panel">
-          <h2>Upcoming rounds</h2>
-          <p className="subtitle">Based on the current round-robin rotation — shifts if players are added or removed.</p>
-          <ol className="upcoming-list">
-            {Array.from({ length: 5 }, (_, i) => {
-              const r = round + 1 + i
-              const { clueGiverId: cg, guesserId: gs } = computeRoles(players, r - 1)
-              const cgName = players.find((p) => p.id === cg)?.name
-              const gsName = players.find((p) => p.id === gs)?.name
-              return (
-                <li key={r}>
-                  <span className="upcoming-round">Round {r}</span>
-                  <span>
-                    {cgName} → {gsName}
-                  </span>
-                </li>
-              )
-            })}
-          </ol>
-        </div>
-      )}
-
       <Scoreboard players={players} clueGiverId={clueGiverId} guesserId={guesserId} onAdjust={adjustScore} />
 
       <div className="turn-banner">
@@ -346,38 +379,43 @@ export default function App() {
             />
           </div>
           <div className="topic-actions">
-            <button className="icon-button" onClick={fillPreset} title="Shuffle random topic" aria-label="Shuffle random topic">
+            <button
+              className="icon-button tooltip"
+              onClick={fillPreset}
+              data-tooltip="Shuffle random topic"
+              aria-label="Shuffle random topic"
+            >
               🎲
             </button>
             <button
-              className="icon-button"
+              className="icon-button tooltip"
               disabled={!topicEdited || !leftLabel.trim() || !rightLabel.trim()}
               onClick={saveTopic}
-              title={justSaved ? 'Saved!' : topicEdited ? 'Save this topic' : 'Edit the topic to save it as new'}
+              data-tooltip={justSaved ? 'Saved!' : topicEdited ? 'Save this topic' : 'Edit the topic to save it as new'}
               aria-label="Save this topic"
             >
               {justSaved ? '✓' : '💾'}
             </button>
-          </div>
 
-          {others.length > 0 && (
-            <div className="guesser-row">
-              <label htmlFor="guesser-select">Guesser</label>
-              {players.filter((p) => p.id !== clueGiverId).length > 1 ? (
-                <select id="guesser-select" value={guesserId} onChange={(e) => setGuesserId(e.target.value)}>
-                  {players
-                    .filter((p) => p.id !== clueGiverId)
-                    .map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                </select>
-              ) : (
-                <strong>{guesser?.name}</strong>
-              )}
-            </div>
-          )}
+            {others.length > 0 && (
+              <div className="guesser-row">
+                <label htmlFor="guesser-select">Guesser</label>
+                {players.filter((p) => p.id !== clueGiverId).length > 1 ? (
+                  <select id="guesser-select" value={guesserId} onChange={(e) => setGuesserId(e.target.value)}>
+                    {players
+                      .filter((p) => p.id !== clueGiverId)
+                      .map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                  </select>
+                ) : (
+                  <strong>{guesser?.name}</strong>
+                )}
+              </div>
+            )}
+          </div>
 
           <div className="secret-zone">
             <div className="secret-label">🔒 Secret target — only {clueGiver?.name} should look. Drag to set it.</div>
@@ -475,6 +513,8 @@ export default function App() {
                   {' '}
                   — {clueGiver?.name} earns <strong>{lastResult.clueGiverPoints}</strong> for the clue
                 </>
+              ) : lastResult.guesserPoints > 0 ? (
+                <> — {clueGiver?.name} earns 0 (clue giver scoring is off)</>
               ) : (
                 <> — {clueGiver?.name} earns 0 (guess didn't score)</>
               )}
@@ -491,10 +531,32 @@ export default function App() {
             )}
           </div>
           <button className="primary" onClick={nextRound}>
-            Next round
+            Next round ({players.find((p) => p.id === computeRoles(players, round).clueGiverId)?.name} is clue
+            giver)
           </button>
         </div>
       )}
+
+      <details className="history">
+        <summary>Upcoming rounds</summary>
+        <p className="subtitle">Based on the current round-robin rotation — shifts if players are added or removed.</p>
+        <ol className="upcoming-list">
+          {Array.from({ length: 5 }, (_, i) => {
+            const r = round + 1 + i
+            const { clueGiverId: cg, guesserId: gs } = computeRoles(players, r - 1)
+            const cgName = players.find((p) => p.id === cg)?.name
+            const gsName = players.find((p) => p.id === gs)?.name
+            return (
+              <li key={r}>
+                <span className="upcoming-round">Round {r}</span>
+                <span>
+                  {cgName} → {gsName}
+                </span>
+              </li>
+            )
+          })}
+        </ol>
+      </details>
 
       {history.length > 0 && (
         <details className="history">
