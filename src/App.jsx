@@ -4,6 +4,7 @@ import Scoreboard from './components/Scoreboard.jsx'
 import WavelengthDial from './components/WavelengthDial.jsx'
 import Summary from './components/Summary.jsx'
 import Settings from './components/Settings.jsx'
+import HowToPlay from './components/HowToPlay.jsx'
 import { PRESETS } from './presets.js'
 import { scoreGuess } from './scoring.js'
 import { toTenScale } from './stats.js'
@@ -29,7 +30,9 @@ export default function App() {
   // switch, by nudging scroll to cancel out however much it moved.
   const dialTopRef = useRef(null)
   const goToPhase = (next) => {
-    const el = document.querySelector('.dial-wrap')
+    // Only the round phases have "the" dial — the how-to-play demo on the
+    // lobby also renders a .dial-wrap, which isn't what we want to freeze.
+    const el = ROUND_PHASES.includes(phase) ? document.querySelector('.dial-wrap') : null
     dialTopRef.current = el ? el.getBoundingClientRect().top : null
     setPhase(next)
   }
@@ -250,6 +253,7 @@ export default function App() {
             {players.length < 2 ? 'Add at least 2 players' : 'Start game'}
           </button>
         </div>
+        <HowToPlay />
       </div>
     )
   }

@@ -719,3 +719,45 @@ input[type='text'] {
   transform: translateX(18px);
   background: white;
 }
+
+/* How to play */
+.how-to-play {
+  max-width: 480px;
+  margin: 1.5rem auto 0;
+}
+
+.how-to-list {
+  margin: 0.75rem 0;
+  padding-left: 1.2rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.how-to-list strong {
+  color: var(--text);
+}
+
+.demo {
+  margin: 1rem 0;
+  padding: 1rem;
+  border: 1px dashed var(--panel-border);
+  border-radius: 12px;
+}
+
+.demo-score {
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-top: 0.25rem;
+}
+
+.how-to-diff {
+  margin: 0.75rem 0 0;
+}
+
+.how-to-diff strong {
+  color: var(--text);
+}
