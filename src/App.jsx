@@ -7,9 +7,7 @@ import Settings from './components/Settings.jsx'
 import HowToPlay from './components/HowToPlay.jsx'
 import { PRESETS } from './presets.js'
 import { scoreGuess } from './scoring.js'
-import { computeStats, toTenScale } from './stats.js'
-import { buildReportText } from './export.js'
-import ShareExport from './components/ShareExport.jsx'
+import { toTenScale } from './stats.js'
 import { loadCustomTopics, saveCustomTopic, removeCustomTopic } from './customTopics.js'
 import { computeRoles } from './rotation.js'
 
@@ -582,10 +580,6 @@ export default function App() {
               </li>
             ))}
           </ul>
-          <ShareExport
-            text={buildReportText({ players, history, stats: computeStats(history) })}
-            title="Wavelength scores so far"
-          />
         </details>
       )}
     </div>
