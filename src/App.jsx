@@ -7,7 +7,9 @@ import Settings from './components/Settings.jsx'
 import HowToPlay from './components/HowToPlay.jsx'
 import { PRESETS } from './presets.js'
 import { scoreGuess } from './scoring.js'
-import { toTenScale } from './stats.js'
+import { computeStats, toTenScale } from './stats.js'
+import { buildReportText } from './export.js'
+import ShareExport from './components/ShareExport.jsx'
 import { loadCustomTopics, saveCustomTopic, removeCustomTopic } from './customTopics.js'
 import { computeRoles } from './rotation.js'
 
@@ -363,10 +365,7 @@ export default function App() {
       {phase === PHASES.CLUE_SETUP && (
         <div className="panel">
           <h2>Set the spectrum</h2>
-          <p className="subtitle">
-            {clueGiver?.name} only: a topic and secret target are picked for you — edit the topic or pick a
-            different one, and drag the target if you want to move it.
-          </p>
+          <p className="subtitle">{clueGiver?.name} only: a topic and target are picked for you — edit either if you like.</p>
 
           <div className="label-inputs">
             <input
@@ -435,6 +434,9 @@ export default function App() {
           <button className="primary" onClick={lockTarget}>
             Lock target &amp; hide it — hand off to {guesser?.name}
           </button>
+          <button className="skip-round" onClick={nextRound}>
+            Skip {clueGiver?.name}'s round
+          </button>
         </div>
       )}
 
@@ -442,8 +444,7 @@ export default function App() {
         <div className="panel">
           <h2>{guesser?.name}, make your guess</h2>
           <p className="subtitle">
-            {clueGiver?.name} should give a verbal clue now. {guesser?.name}, drag the marker to where you think
-            the target is, then lock it in.
+            {clueGiver?.name}, give your clue now. {guesser?.name}, drag to your guess and lock it in.
           </p>
           <WavelengthDial
             leftLabel={leftLabel}
@@ -453,6 +454,9 @@ export default function App() {
           />
           <button className="primary" onClick={lockGuess}>
             Lock in guess
+          </button>
+          <button className="skip-round" onClick={nextRound}>
+            Skip this round
           </button>
         </div>
       )}
@@ -494,6 +498,9 @@ export default function App() {
           </div>
           <button className="primary" onClick={reveal}>
             Reveal target
+          </button>
+          <button className="skip-round" onClick={nextRound}>
+            Skip this round
           </button>
         </div>
       )}
@@ -543,7 +550,6 @@ export default function App() {
 
       <details className="history">
         <summary>Upcoming rounds</summary>
-        <p className="subtitle">Based on the current round-robin rotation — shifts if players are added or removed.</p>
         <ol className="upcoming-list">
           {Array.from({ length: 5 }, (_, i) => {
             const r = round + 1 + i
@@ -565,7 +571,7 @@ export default function App() {
       {history.length > 0 && (
         <details className="history">
           <summary>Round history ({history.length})</summary>
-          <ol>
+          <ul>
             {history.map((h, i) => (
               <li key={i}>
                 Round {h.round} — Clue: {h.clueGiverName} (+{h.clueGiverPoints}), Guess: {h.guesserName} (+
@@ -575,7 +581,11 @@ export default function App() {
                   ` (+${h.bonusResults.filter((b) => b.earned).length} bonus)`}
               </li>
             ))}
-          </ol>
+          </ul>
+          <ShareExport
+            text={buildReportText({ players, history, stats: computeStats(history) })}
+            title="Wavelength scores so far"
+          />
         </details>
       )}
     </div>

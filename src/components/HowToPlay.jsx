@@ -13,6 +13,7 @@ export default function HowToPlay() {
       <summary>❓ How to play</summary>
 
       <ol className="how-to-list">
+        <li>Best with <strong>2–5 players</strong>.</li>
         <li>
           Each round, one player is the <strong>Clue Giver</strong> and another is the <strong>Guesser</strong> —
           roles rotate every round.

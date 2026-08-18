@@ -18,13 +18,16 @@ export function computeStats(history) {
   const combos = new Map()
 
   for (const round of history) {
-    bump(byClueGiver, round.clueGiverId, round.clueGiverName, round.clueGiverPoints)
+    // "Best clue giver" is about how well their guessers read the clue, not
+    // the clue giver's own (optional, flat) scoring bonus — so both roles,
+    // and the duo score, are ranked on the guesser's accuracy points.
+    bump(byClueGiver, round.clueGiverId, round.clueGiverName, round.guesserPoints)
     bump(byGuesser, round.guesserId, round.guesserName, round.guesserPoints)
     bump(
       combos,
       `${round.clueGiverId}|${round.guesserId}`,
       `${round.clueGiverName} → ${round.guesserName}`,
-      round.clueGiverPoints + round.guesserPoints,
+      round.guesserPoints,
     )
   }
 
